@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+      - AUTH_SERVICE_PORT=3001
+      - CONTENT_SERVICE_PORT=3002
+      - DISCOVERY_SERVICE_PORT=3003
+    depends_on:
+      - auth-service
+      - content-service
+      - discovery-service
+    networks:
+      - platform-network
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - JWT_SECRET=your-secret-key
+    networks:
+      - platform-network
+
+  content-service:
+    build: ./services/content-service
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - ELASTICSEARCH_URI=http://elasticsearch:9200
+    networks:
+      - platform-network
+
+  discovery-service:
+    build: ./services/discovery-service
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - ELASTICSEARCH_URI=http://elasticsearch:9200
+    networks:
+      - platform-network
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: auth_user
+      MONGO_INITDB_ROOT_PASSWORD: auth_password
+      MONGO_INITDB_DATABASE: discovery
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - platform-network
+
+  elasticsearch:
+    image: elasticsearch:8.7.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - platform-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - platform-network
+
+networks:
+  platform-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  elasticsearch_data:
+  redis_data: 
