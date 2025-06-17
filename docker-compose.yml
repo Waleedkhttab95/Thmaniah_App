@@ -64,7 +64,7 @@ services:
       - platform-network
 
   elasticsearch:
-    image: elasticsearch:8.7.0
+    image: elasticsearch:9.0.2
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false

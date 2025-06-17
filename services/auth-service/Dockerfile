@@ -9,7 +9,7 @@ COPY package*.json ./
 
 # Install dependencies and rebuild bcrypt
 RUN npm install
-RUN npm rebuild bcrypt --build-from-source
+RUN npm rebuild bcrypt --build-from-source --update-binary
 
 COPY . .
 

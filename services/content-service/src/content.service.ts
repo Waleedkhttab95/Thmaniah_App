@@ -15,7 +15,7 @@ export class ContentService {
     @Inject('DISCOVERY_SERVICE') private discoveryClient: ClientProxy,
   ) {
     this.elasticsearchClient = new Client({
-      node: process.env.ELASTICSEARCH_URI || 'http://localhost:9200',
+      node: process.env.ELASTICSEARCH_URI || 'http://localhost:9200'
     });
   }
 
@@ -23,7 +23,7 @@ export class ContentService {
     const createdContent = new this.contentModel({
       ...createContentDto,
       createdBy: userId,
-      publishDate: new Date(createContentDto.publishDate)
+      publishDate: new Date()
     });
 
     const savedContent = await createdContent.save();

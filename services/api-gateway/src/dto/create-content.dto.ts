@@ -31,9 +31,7 @@ export class CreateContentDto {
   @IsNumber()
   duration: number;
 
-  @ApiProperty({ example: '2024-03-20T00:00:00.000Z', description: 'The publish date of the content' })
-  @IsDate()
-  publishDate: Date;
+  
 
   @ApiProperty({
     example: {
