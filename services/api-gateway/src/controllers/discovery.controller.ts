@@ -15,8 +15,43 @@ export class DiscoveryController {
   @Get('search')
   @Throttle({ default: { limit: 100, ttl: 60 } })
   @ApiOperation({ summary: 'Search content' })
-  @ApiQuery({ name: 'query', description: 'Search query parameters' })
-  @ApiResponse({ status: 200, description: 'Search results' })
+  @ApiQuery({ 
+    name: 'keywords', 
+    required: true,
+    description: 'Search keywords to find content',
+    type: String 
+  })
+  @ApiQuery({ 
+    name: 'category', 
+    required: false,
+    description: 'Filter content by category',
+    type: String 
+  })
+  @ApiQuery({ 
+    name: 'tags', 
+    required: false,
+    description: 'Filter content by tags (can be multiple)',
+    type: [String],
+    isArray: true
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Search results',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          description: { type: 'string' },
+          content: { type: 'string' },
+          category: { type: 'string' },
+          tags: { type: 'array', items: { type: 'string' } },
+          status: { type: 'string' }
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   async searchContent(@Query() query: any) {
     try {
