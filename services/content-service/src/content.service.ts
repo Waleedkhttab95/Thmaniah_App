@@ -23,6 +23,7 @@ export class ContentService {
     const createdContent = new this.contentModel({
       ...createContentDto,
       createdBy: userId,
+      publishDate: new Date(createContentDto.publishDate)
     });
 
     const savedContent = await createdContent.save();

@@ -24,7 +24,7 @@ The platform consists of the following microservices:
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd content-platform
+
 ```
 
 2. Install dependencies for each service:
@@ -52,14 +52,7 @@ cd services/<service-name>
 npm run start:dev
 ```
 
-## API Documentation
 
-Each service exposes its own Swagger documentation:
-
-- API Gateway: http://localhost:3000/api
-- Auth Service: http://localhost:3001/api
-- Content Service: http://localhost:3002/api
-- Discovery Service: http://localhost:3003/api
 
 ## Environment Variables
 

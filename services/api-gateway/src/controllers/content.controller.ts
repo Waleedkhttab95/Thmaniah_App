@@ -2,6 +2,8 @@ import { Controller, Get, Post, Put, Delete, Body, Param, Inject, HttpException,
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { CreateContentDto } from '../dto/create-content.dto';
+
 @ApiTags('Content')
 @Controller('content')
 export class ContentController {
@@ -11,10 +13,10 @@ export class ContentController {
 
   @Post()
   @ApiOperation({ summary: 'Create new content' })
-  @ApiBody({ description: 'Content creation data' })
+  @ApiBody({ type: CreateContentDto })
   @ApiResponse({ status: 201, description: 'Content successfully created' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createContent(@Body() createContentDto: any) {
+  async createContent(@Body() createContentDto: CreateContentDto) {
     try {
       const response = await firstValueFrom(
         this.contentService.send({ cmd: 'create_content' }, { ...createContentDto, userId: "Test User" }),
@@ -43,7 +45,7 @@ export class ContentController {
   @Get(':id')
   @ApiOperation({ summary: 'Get content by ID' })
   @ApiParam({ name: 'id', description: 'Content ID' })
-  @ApiResponse({ status: 200, description: 'Content found' })
+  @ApiResponse({ status: 200, description: 'Content details' })
   @ApiResponse({ status: 404, description: 'Content not found' })
   async getContentById(@Param('id') id: string) {
     try {
@@ -59,10 +61,10 @@ export class ContentController {
   @Put(':id')
   @ApiOperation({ summary: 'Update content' })
   @ApiParam({ name: 'id', description: 'Content ID' })
-  @ApiBody({ description: 'Content update data' })
+  @ApiBody({ type: CreateContentDto })
   @ApiResponse({ status: 200, description: 'Content successfully updated' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async updateContent(@Param('id') id: string, @Body() updateContentDto: any) {
+  async updateContent(@Param('id') id: string, @Body() updateContentDto: Partial<CreateContentDto>) {
     try {
       const response = await firstValueFrom(
         this.contentService.send({ cmd: 'update_content' }, { id, ...updateContentDto }),
@@ -77,7 +79,7 @@ export class ContentController {
   @ApiOperation({ summary: 'Delete content' })
   @ApiParam({ name: 'id', description: 'Content ID' })
   @ApiResponse({ status: 200, description: 'Content successfully deleted' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Content not found' })
   async deleteContent(@Param('id') id: string) {
     try {
       const response = await firstValueFrom(
@@ -85,7 +87,7 @@ export class ContentController {
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
     }
   }
 } 

@@ -2,6 +2,7 @@ import { Controller, Post, Body, Inject, HttpException, HttpStatus } from '@nest
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { CreateUserDto } from '../dto/create-user.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -12,10 +13,10 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiBody({ description: 'User registration data' })
+  @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async register(@Body() registerDto: any) {
+  async register(@Body() registerDto: CreateUserDto) {
     try {
       const response = await firstValueFrom(
         this.authService.send({ cmd: 'register' }, registerDto),
@@ -28,10 +29,10 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Login user' })
-  @ApiBody({ description: 'User login credentials' })
+  @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 200, description: 'User successfully logged in' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async login(@Body() loginDto: any) {
+  async login(@Body() loginDto: CreateUserDto) {
     try {
       const response = await firstValueFrom(
         this.authService.send({ cmd: 'login' }, loginDto),

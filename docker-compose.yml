@@ -23,7 +23,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - MONGODB_URI=mongodb://root:password@mongodb:27017/dev?authSource=admin
       - JWT_SECRET=your-secret-key
     networks:
       - platform-network
@@ -33,7 +33,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - MONGODB_URI=mongodb://root:password@mongodb:27017/dev?authSource=admin
       - ELASTICSEARCH_URI=http://elasticsearch:9200
     networks:
       - platform-network
@@ -43,7 +43,7 @@ services:
     ports:
       - "3003:3003"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/discovery
+      - MONGODB_URI=mongodb://root:password@mongodb:27017/dev?authSource=admin
       - ELASTICSEARCH_URI=http://elasticsearch:9200
     networks:
       - platform-network
@@ -54,11 +54,12 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: auth_user
-      MONGO_INITDB_ROOT_PASSWORD: auth_password
-      MONGO_INITDB_DATABASE: discovery
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: dev
     volumes:
       - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - platform-network
 
