@@ -33,6 +33,8 @@ export class DiscoveryService {
     });
   }
 
+ 
+
   async handleContentCreated(data: any) {
     // Create content in discovery service database
     const content = new this.contentModel({
