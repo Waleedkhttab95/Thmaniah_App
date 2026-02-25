@@ -10,45 +10,56 @@ import { ContentSource, ContentSourceSchema } from './schemas/content-source.sch
 import { ContentSourceService } from './services/content-source.service';
 import { ContentSourceController } from './controllers/content-source.controller';
 import { S3Service } from './services/s3.service';
+import { ContentImportService } from './services/content-import.service';
+import { YouTubeImportStrategy } from './import-strategies/youtube.strategy';
+import { RSSImportStrategy } from './import-strategies/rss.strategy';
+import { ManualImportStrategy } from './import-strategies/manual.strategy';
 import { UploadController } from './controllers/upload.controller';
 import { UploadProcessor } from './processors/upload.processor';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URI'),
-      }),
-      inject: [ConfigService],
-    }),
     MongooseModule.forFeature([
       { name: Content.name, schema: ContentSchema },
       { name: ContentSource.name, schema: ContentSourceSchema },
     ]),
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'DISCOVERY_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.DISCOVERY_SERVICE_HOST || 'discovery-service',
-          port: parseInt(process.env.DISCOVERY_SERVICE_PORT) || 3003,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get('DISCOVERY_SERVICE_HOST', 'discovery-service'),
+            port: configService.get<number>('DISCOVERY_SERVICE_PORT', 3003),
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
-    BullModule.forRoot({
-      redis: {
-        host: process.env.REDIS_HOST || 'redis',
-        port: parseInt(process.env.REDIS_PORT) || 6379,
-      },
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST', 'redis'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
     }),
-    BullModule.registerQueue({
-      name: 'uploads',
-    }),
+    BullModule.registerQueue({ name: 'uploads' }),
   ],
   controllers: [ContentController, ContentSourceController, UploadController],
-  providers: [ContentService, ContentSourceService, S3Service, UploadProcessor],
-  exports: [ContentService, ContentSourceService],
+  providers: [
+    ContentService,
+    ContentSourceService,
+    ContentImportService,
+    S3Service,
+    UploadProcessor,
+    YouTubeImportStrategy,
+    RSSImportStrategy,
+    ManualImportStrategy,
+  ],
+  exports: [ContentService, ContentSourceService, ContentImportService],
 })
-export class ContentModule {} 
+export class ContentModule {}

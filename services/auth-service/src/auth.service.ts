@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -8,24 +8,35 @@ import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
   ) {}
 
-  async createUser(createUserDto: CreateUserDto): Promise<User> {
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+  async createUser(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
+    const existingUser = await this.userModel.findOne({ email: createUserDto.email.toLowerCase() });
+    if (existingUser) {
+      throw new ConflictException('A user with this email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
     const createdUser = new this.userModel({
       ...createUserDto,
+      email: createUserDto.email.toLowerCase(),
       password: hashedPassword,
     });
-    return createdUser.save();
+
+    const saved = await createdUser.save();
+    const { password, ...userWithoutPassword } = saved.toObject();
+    return userWithoutPassword;
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email: email.toLowerCase() }).select('+password');
     if (user && (await bcrypt.compare(password, user.password))) {
-      const { password, ...result } = user.toObject();
+      const { password: _, ...result } = user.toObject();
       return result;
     }
     return null;
@@ -45,10 +56,10 @@ export class AuthService {
   }
 
   async findById(id: string): Promise<User> {
-    return this.userModel.findById(id).exec();
+    return this.userModel.findById(id).select('-password').exec();
   }
 
   async findByEmail(email: string): Promise<User> {
-    return this.userModel.findOne({ email }).exec();
+    return this.userModel.findOne({ email: email.toLowerCase() }).select('-password').exec();
   }
-} 
+}

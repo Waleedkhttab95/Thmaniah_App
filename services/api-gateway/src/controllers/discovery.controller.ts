@@ -1,8 +1,9 @@
-import { Controller, Get, Query, Inject, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, Req, Inject, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { ThrottlerGuard, Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('Discovery')
 @Controller('discovery')
@@ -125,6 +126,60 @@ export class DiscoveryController {
 
       const response = await firstValueFrom(
         this.discoveryService.send({ cmd: 'manual_search' }, searchParams),
+      );
+      return response;
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Get('preferences')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user discovery preferences' })
+  @ApiResponse({
+    status: 200,
+    description: 'User preferences',
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'string' },
+        favoriteCategories: { type: 'array', items: { type: 'string' } },
+        favoriteTags: { type: 'array', items: { type: 'string' } },
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getPreferences(@Req() req: any) {
+    try {
+      const response = await firstValueFrom(
+        this.discoveryService.send({ cmd: 'get_preferences' }, { userId: req.user.id }).pipe(timeout(5000)),
+      );
+      return response;
+    } catch (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  @Put('preferences')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user discovery preferences' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        favoriteCategories: { type: 'array', items: { type: 'string' }, description: 'Preferred content categories' },
+        favoriteTags: { type: 'array', items: { type: 'string' }, description: 'Preferred content tags' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Updated preferences' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updatePreferences(@Req() req: any, @Body() body: { favoriteCategories?: string[]; favoriteTags?: string[] }) {
+    try {
+      const response = await firstValueFrom(
+        this.discoveryService.send({ cmd: 'update_preferences' }, { userId: req.user.id, ...body }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {

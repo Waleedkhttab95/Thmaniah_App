@@ -1,84 +1,81 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { ContentSourceService } from '../services/content-source.service';
-import { CreateContentSourceDto } from '../dto/create-content-source.dto';
-import { UpdateContentSourceDto } from '../dto/update-content-source.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ContentImportService } from '../services/content-import.service';
 
-@ApiTags('content-sources')
-@Controller('content-sources')
+@Controller()
 export class ContentSourceController {
-  constructor(private readonly contentSourceService: ContentSourceService) {}
+  private readonly logger = new Logger(ContentSourceController.name);
 
-  @Post()
-  @ApiOperation({ summary: 'Create a new content source' })
-  @ApiResponse({ status: 201, description: 'Content source created successfully' })
-  create(@Body() createContentSourceDto: CreateContentSourceDto) {
-    return this.contentSourceService.create(createContentSourceDto);
+  constructor(
+    private readonly contentSourceService: ContentSourceService,
+    private readonly contentImportService: ContentImportService,
+  ) {}
+
+  @MessagePattern({ cmd: 'create_content_source' })
+  async create(@Payload() data: any) {
+    try {
+      return await this.contentSourceService.create(data);
+    } catch (error) {
+      this.logger.error(`Failed to create content source: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Get all content sources' })
-  @ApiResponse({ status: 200, description: 'Return all content sources' })
-  findAll() {
-    return this.contentSourceService.findAll();
+  @MessagePattern({ cmd: 'get_all_content_sources' })
+  async findAll() {
+    try {
+      return await this.contentSourceService.findAll();
+    } catch (error) {
+      this.logger.error(`Failed to fetch content sources: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Get('active')
-  @ApiOperation({ summary: 'Get all active content sources' })
-  @ApiResponse({ status: 200, description: 'Return all active content sources' })
-  findActive() {
-    return this.contentSourceService.findActive();
+  @MessagePattern({ cmd: 'get_content_source_by_id' })
+  async findOne(@Payload() data: { id: string }) {
+    try {
+      return await this.contentSourceService.findOne(data.id);
+    } catch (error) {
+      this.logger.error(`Failed to fetch content source: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a content source by id' })
-  @ApiResponse({ status: 200, description: 'Return the content source' })
-  @ApiResponse({ status: 404, description: 'Content source not found' })
-  findOne(@Param('id') id: string) {
-    return this.contentSourceService.findOne(id);
+  @MessagePattern({ cmd: 'update_content_source' })
+  async update(@Payload() data: { id: string; [key: string]: any }) {
+    try {
+      const { id, ...updateData } = data;
+      return await this.contentSourceService.update(id, updateData);
+    } catch (error) {
+      this.logger.error(`Failed to update content source: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Get('name/:name')
-  @ApiOperation({ summary: 'Get a content source by name' })
-  @ApiResponse({ status: 200, description: 'Return the content source' })
-  @ApiResponse({ status: 404, description: 'Content source not found' })
-  findByName(@Param('name') name: string) {
-    return this.contentSourceService.findByName(name);
+  @MessagePattern({ cmd: 'delete_content_source' })
+  async remove(@Payload() data: { id: string }) {
+    try {
+      await this.contentSourceService.remove(data.id);
+      return { message: 'Content source deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Failed to delete content source: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a content source' })
-  @ApiResponse({ status: 200, description: 'Content source updated successfully' })
-  @ApiResponse({ status: 404, description: 'Content source not found' })
-  update(
-    @Param('id') id: string,
-    @Body() updateContentSourceDto: UpdateContentSourceDto,
-  ) {
-    return this.contentSourceService.update(id, updateContentSourceDto);
+  @MessagePattern({ cmd: 'import_content' })
+  async importContent(@Payload() data: { source: string; config: Record<string, any>; userId: string }) {
+    try {
+      return await this.contentImportService.importContent(data.source, data.config, data.userId);
+    } catch (error) {
+      this.logger.error(`Failed to import content: ${error.message}`);
+      throw new RpcException(error.message);
+    }
   }
 
-  @Patch(':id/toggle')
-  @ApiOperation({ summary: 'Toggle content source active status' })
-  @ApiResponse({ status: 200, description: 'Content source status toggled successfully' })
-  @ApiResponse({ status: 404, description: 'Content source not found' })
-  toggleActive(@Param('id') id: string) {
-    return this.contentSourceService.toggleActive(id);
+  @MessagePattern({ cmd: 'get_import_strategies' })
+  async getImportStrategies() {
+    return { strategies: this.contentImportService.getAvailableStrategies() };
   }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a content source' })
-  @ApiResponse({ status: 200, description: 'Content source deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Content source not found' })
-  remove(@Param('id') id: string) {
-    return this.contentSourceService.remove(id);
-  }
-} 
+}

@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Inject, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Inject, HttpException, HttpStatus, UseGuards, Req } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { firstValueFrom, timeout } from 'rxjs';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateContentDto } from '../dto/create-content.dto';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { RolesGuard, Roles } from '../guards/roles.guard';
 
 @ApiTags('Content')
 @Controller('content')
@@ -12,33 +14,45 @@ export class ContentController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'editor')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create new content' })
   @ApiBody({ type: CreateContentDto })
   @ApiResponse({ status: 201, description: 'Content successfully created' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createContent(@Body() createContentDto: CreateContentDto) {
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async createContent(@Body() createContentDto: CreateContentDto, @Req() req: any) {
     try {
       const response = await firstValueFrom(
-        this.contentService.send({ cmd: 'create_content' }, { ...createContentDto, userId: "Test User" }),
+        this.contentService.send({ cmd: 'create_content' }, {
+          ...createContentDto,
+          userId: req.user.id,
+        }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message || 'Failed to create content', HttpStatus.BAD_REQUEST);
     }
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all content' })
-  @ApiResponse({ status: 200, description: 'List of all content' })
-  @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getAllContent() {
+  @ApiOperation({ summary: 'Get all content (paginated)' })
+  @ApiResponse({ status: 200, description: 'Paginated list of content' })
+  async getAllContent(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     try {
       const response = await firstValueFrom(
-        this.contentService.send({ cmd: 'get_all_content' }, {}),
+        this.contentService.send({ cmd: 'get_all_content' }, {
+          page: page ? parseInt(page, 10) : 1,
+          limit: limit ? parseInt(limit, 10) : 20,
+        }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message || 'Failed to fetch content', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -50,44 +64,56 @@ export class ContentController {
   async getContentById(@Param('id') id: string) {
     try {
       const response = await firstValueFrom(
-        this.contentService.send({ cmd: 'get_content_by_id' }, { id }),
+        this.contentService.send({ cmd: 'get_content_by_id' }, { id }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      throw new HttpException(error.message || 'Content not found', HttpStatus.NOT_FOUND);
     }
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'editor')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update content' })
   @ApiParam({ name: 'id', description: 'Content ID' })
   @ApiBody({ type: CreateContentDto })
   @ApiResponse({ status: 200, description: 'Content successfully updated' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async updateContent(@Param('id') id: string, @Body() updateContentDto: Partial<CreateContentDto>) {
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateContent(@Param('id') id: string, @Body() updateContentDto: Partial<CreateContentDto>, @Req() req: any) {
     try {
       const response = await firstValueFrom(
-        this.contentService.send({ cmd: 'update_content' }, { id, ...updateContentDto }),
+        this.contentService.send({ cmd: 'update_content' }, {
+          id,
+          ...updateContentDto,
+          updatedBy: req.user.id,
+        }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      throw new HttpException(error.message || 'Failed to update content', HttpStatus.BAD_REQUEST);
     }
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete content' })
   @ApiParam({ name: 'id', description: 'Content ID' })
   @ApiResponse({ status: 200, description: 'Content successfully deleted' })
   @ApiResponse({ status: 404, description: 'Content not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async deleteContent(@Param('id') id: string) {
     try {
       const response = await firstValueFrom(
-        this.contentService.send({ cmd: 'delete_content' }, { id }),
+        this.contentService.send({ cmd: 'delete_content' }, { id }).pipe(timeout(5000)),
       );
       return response;
     } catch (error) {
-      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
+      throw new HttpException(error.message || 'Failed to delete content', HttpStatus.NOT_FOUND);
     }
   }
-} 
+}

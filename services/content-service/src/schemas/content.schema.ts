@@ -14,25 +14,25 @@ export enum ContentStatus {
 
 @Schema({ timestamps: true })
 export class Content extends Document {
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   title: string;
 
   @Prop({ required: true })
   description: string;
 
-  @Prop({ type: String, enum: ContentType, required: true })
+  @Prop({ type: String, enum: ContentType, required: true, index: true })
   type: ContentType;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   category: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   language: string;
 
   @Prop({ required: true })
   duration: number;
 
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   publishDate: Date;
 
   @Prop({
@@ -41,6 +41,9 @@ export class Content extends Document {
       thumbnail: String,
       videoUrl: String,
       source: String,
+      uploadStatus: String,
+      videoKey: String,
+      uploadError: String,
     },
   })
   contentDetails: {
@@ -48,9 +51,12 @@ export class Content extends Document {
     thumbnail: string;
     videoUrl: string;
     source: string;
+    uploadStatus?: string;
+    videoKey?: string;
+    uploadError?: string;
   };
 
-  @Prop({ type: String, enum: ContentStatus, default: ContentStatus.DRAFT })
+  @Prop({ type: String, enum: ContentStatus, default: ContentStatus.DRAFT, index: true })
   status: ContentStatus;
 
   @Prop({ required: true })
@@ -60,4 +66,10 @@ export class Content extends Document {
   updatedBy: string;
 }
 
-export const ContentSchema = SchemaFactory.createForClass(Content); 
+export const ContentSchema = SchemaFactory.createForClass(Content);
+
+ContentSchema.index({ category: 1, publishDate: -1 });
+ContentSchema.index({ 'contentDetails.tags': 1, publishDate: -1 });
+ContentSchema.index({ status: 1, publishDate: -1 });
+ContentSchema.index({ language: 1, category: 1 });
+ContentSchema.index({ title: 'text', description: 'text' });

@@ -1,49 +1,56 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthController } from './controllers/auth.controller';
 import { ContentController } from './controllers/content.controller';
 import { DiscoveryController } from './controllers/discovery.controller';
 import { ContentSourceController } from './controllers/content-source.controller';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot({
-      throttlers: [
-        {
-          ttl: 60000,
-          limit: 10,
-        },
-      ],
+      throttlers: [{ ttl: 60000, limit: 100 }],
     }),
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'AUTH_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'auth-service',
-          port: 3001,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get('AUTH_SERVICE_HOST', 'auth-service'),
+            port: configService.get<number>('AUTH_SERVICE_PORT', 3001),
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'CONTENT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'content-service',
-          port: 3002,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get('CONTENT_SERVICE_HOST', 'content-service'),
+            port: configService.get<number>('CONTENT_SERVICE_PORT', 3002),
+          },
+        }),
+        inject: [ConfigService],
       },
       {
         name: 'DISCOVERY_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: 'discovery-service',
-          port: 3003,
-        },
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: configService.get('DISCOVERY_SERVICE_HOST', 'discovery-service'),
+            port: configService.get<number>('DISCOVERY_SERVICE_PORT', 3003),
+          },
+        }),
+        inject: [ConfigService],
       },
     ]),
   ],
@@ -55,4 +62,4 @@ import { ThrottlerModule } from '@nestjs/throttler';
   ],
   providers: [],
 })
-export class AppModule {} 
+export class AppModule {}
